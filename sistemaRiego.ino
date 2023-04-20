@@ -37,7 +37,7 @@
 
   Rele Activar Electrovalvula
   IN -> PIN 13
--------------------------------------------
+  -------------------------------------------
 */
 
 #define pinLedVerde 3
@@ -132,8 +132,8 @@ void setup() {
 
 void loop() {
   // Obtiene tecla presionada y asigna a variable
-  TECLA = teclado.getKey();   
-  
+  TECLA = teclado.getKey();
+
   //Obtenemos los datos del DHT11
   temp = dht.readTemperature();
   humd = dht.readHumidity();
@@ -141,43 +141,60 @@ void loop() {
   //Si existe una TECLA presionada
   if (TECLA) {
     if (!modificarHumedad && !modificarAlarma) {
-      if (index != 'D' && index != 'C') {
-        index = TECLA;
-        Serial.print("INDEX: ");
-        Serial.println(index);
-      }
-      else {
-        indexSub = TECLA;
-        Serial.print("INDEX SUB: ");
-        Serial.println(indexSub);
+
+      if (index != 'D' && index != 'C') index = TECLA;
+      else indexSub = TECLA;
+
+      //Modificar el horario del sistema de riego
+      if (index == 'C') menuC();
+
+      //Modificar de que humedad empezar y de que humedad terminar el sistema de riego
+      if (index == 'D') menuD();
+
+      //Mostrar Menu de que si esta regando o no
+      if (index == 'B') mostrarMenuB();
+
+      //Activar Rele
+      if (index == '#') {
+        activarRele(!digitalRead(pinRele));
+        mostrarMenuB();
       }
     } else {
-      CLAVE[INDICE] = TECLA;    // almacena en array la tecla presionada
-      INDICE++;       // incrementa indice en uno
+      if (TECLA != 'A' && TECLA != 'B' && TECLA != 'C' && TECLA != 'D' && TECLA != '*' && TECLA != '#') {
+        CLAVE[INDICE] = TECLA;    // almacena en array la tecla presionada
+        if (modificarHumedad) {
+          if (modificarEndHumedad) {
+            lcd.setCursor(13, 1);
+            lcd.print(CLAVE[0]);
+          }
+          if (modificarStartHumedad) {
+            lcd.setCursor(13, 0);
+            lcd.print(CLAVE[0]);
+          }
+        }
+
+        if (modificarAlarma) {
+          if (modificarMinutos) {
+            lcd.setCursor(9, 1);
+            lcd.print(CLAVE[0]);
+          }
+          if (modificarHora) {
+            lcd.setCursor(6, 0);
+            lcd.print(CLAVE[0]);
+          }
+        }
+        INDICE++;       // incrementa indice en uno
+      }
+
     }
 
   }
-  if (modificarHumedad) {
-    lcd.setCursor(0, 0);
-    lcd.print("Str Humedad: ");
 
-    lcd.setCursor(0, 1);
-    lcd.print("End Humedad: ");
-
-    modificarStartHumedad = true;
-  }
-  if (modificarAlarma) {
-    lcd.setCursor(0, 0);
-    lcd.print("Hora: ");
-
-    lcd.setCursor(0, 1);
-    lcd.print("Minutos: ");
-
-    modificarHora = true;
-  }
   if (INDICE == 2) {
     if (modificarHumedad) {
       if (modificarEndHumedad) {
+        lcd.setCursor(13, 0);
+        lcd.print(humedadTierra[0]);
 
         lcd.setCursor(13, 1);
         lcd.print(CLAVE[0]);
@@ -198,7 +215,7 @@ void loop() {
         lcd.setCursor(13, 0);
         lcd.print(CLAVE[0]);
         lcd.print(CLAVE[1]);
-        
+
         humedadTierra[0] = getValue();
         modificarStartHumedad = false;
         modificarEndHumedad = true;
@@ -213,7 +230,7 @@ void loop() {
         lcd.print(CLAVE[1]);
         alarma[1] = getValue();
         delay(2000);
-        
+
         modificarHora = false;
         modificarMinutos = false;
         modificarAlarma = false;
@@ -225,7 +242,7 @@ void loop() {
         lcd.print(CLAVE[0]);
         lcd.print(CLAVE[1]);
         alarma[0] = getValue();
-        
+
         modificarHora = false;
         modificarMinutos = true;
       }
@@ -233,6 +250,7 @@ void loop() {
     INDICE = 0;
   }
 
+  //Multi Tasking -> millis de cada segundo modificando el horario
   currentMillis = millis();  //get the current time
   if ( (currentMillis - startMillis) >= period && !modificarHumedad && !modificarAlarma) { //test whether the period has elapsed
     if (index == 'A') {
@@ -241,111 +259,11 @@ void loop() {
       mostrarTemperaturaLcd();
       mostrarHumedadTierra();
     }
-
-    if (index == 'B') {
-      lcd.clear();      // limpia pantalla
-      lcd.setCursor(0, 0);
-      lcd.print("Regando: ");
-      lcd.setCursor(8, 0);
-
-      isRegando() ? lcd.print("SI") : lcd.print("NO");
-    }
-
-    //Modificar el horario del sistema de riego
-    if (index == 'C') {
-      lcd.clear();      // limpia pantalla
-
-      lcd.setCursor(0, 0);
-      lcd.print("1. Ver hr. Riego");
-
-      lcd.setCursor(0, 1);
-      lcd.print("2. Mod hr. Riego");
-
-      if (indexSub == '1') {
-        lcd.clear();      // limpia pantalla
-
-        lcd.setCursor(0, 0);
-        lcd.print("Hora: ");
-        lcd.print(alarma[0]);
-
-        lcd.setCursor(0, 1);
-        lcd.print("Minutos: ");
-        lcd.print(alarma[1]);
-      }
-      if (indexSub == '2') {
-        lcd.clear();      // limpia pantalla
-        modificarAlarma = true;
-      }
-      if (indexSub == 'A') {
-        index = 'A';
-        indexSub = '0';
-      }
-      if (indexSub == 'B') {
-        index = 'B';
-        indexSub = '0';
-      }
-      if (indexSub == 'D') {
-        index = 'D';
-        indexSub = '0';
-      }
-      if (indexSub == '*') {
-        index = 'A';
-        indexSub = '0';
-      }
-    }
-
-    //Modificar de que humedad empezar y de que humedad terminar el sistema de riego
-    if (index == 'D') {
-      lcd.clear();      // limpia pantalla
-
-      lcd.setCursor(0, 0);
-      lcd.print("1. humedad Riego");
-
-      lcd.setCursor(0, 1);
-      lcd.print("2. Mod h. Riego");
-
-      if (indexSub == '1') {
-        lcd.clear();      // limpia pantalla
-
-        lcd.setCursor(0, 0);
-        lcd.print("Str Humedad: ");
-        lcd.print(humedadTierra[0]);
-
-        lcd.setCursor(0, 1);
-        lcd.print("End Humedad: ");
-        lcd.print(humedadTierra[1]);
-
-      }
-      if (indexSub == '2') {
-        lcd.clear();      // limpia pantalla
-        modificarHumedad = true;
-      }
-      if (indexSub == 'A') {
-        index = 'A';
-        indexSub = '0';
-      }
-      if (indexSub == 'B') {
-        index = 'B';
-        indexSub = '0';
-      }
-      if (indexSub == 'C') {
-        index = 'C';
-        indexSub = '0';
-      }
-      if (indexSub == '*') {
-        index = 'A';
-        indexSub = '0';
-      }
-    }
-
-    if (index == '#') {
-      digitalWrite(pinRele, !digitalRead(pinRele));
-      index = 'B';
-    }
-
     startMillis = currentMillis;
   }
 
+
+  //Si llega al horario especificado para regar
   if (rtc.now().hour() == alarma[0] && rtc.now().minute() == alarma[1]) {
     existsAlarm = true;
   }
@@ -357,6 +275,8 @@ void loop() {
     activarLedRojo(HIGH);
   }
 
+  //Termina de regar cuando la humedad de la tierra final sea mayor a lo que de el sensor
+  //EJ: 30 (humedadTierra[1]) > 20 (getSensorTierra())
   if (humedadTierra[1] > getSensorTierra()) {
     existsAlarm = false;
   }
@@ -377,7 +297,14 @@ void activarLedVerde(int estado) {
 void activarLedRojo(int estado) {
   digitalWrite(pinLedRojo, estado == HIGH ? HIGH : LOW);
 }
+void mostrarMenuB() {
+  lcd.clear();      // limpia pantalla
+  lcd.setCursor(0, 0);
+  lcd.print("Regando: ");
+  lcd.setCursor(8, 0);
 
+  isRegando() ? lcd.print("SI") : lcd.print("NO");
+}
 void mostrarTemperaturaLcd() {
   //Mostrar en el LCD
   lcd.setCursor(0, 1);
@@ -392,17 +319,6 @@ void mostrarTemperaturaLcd() {
   lcd.setCursor(12, 1);
   lcd.print(humd);
   lcd.print("%");
-
-  /*
-    Serial.println("-----------------");
-    Serial.print(temp);
-    Serial.print(" C");
-    Serial.println();
-    Serial.print(humd);
-    Serial.print(" %");
-    Serial.println();
-    Serial.println("-----------------");
-  */
 }
 
 void mostrarTiempoLcd() {
@@ -439,8 +355,96 @@ int getSensorTierra() {
 
 int getValue() {
   String strNumero;
-  for(int i=0 ; i<2; i++){
+  for (int i = 0 ; i < 2; i++) {
     strNumero += CLAVE[i];
   }
   return strNumero.toInt();
+}
+void menuC() {
+  lcd.clear();      // limpia pantalla
+
+  lcd.setCursor(0, 0);
+  lcd.print("1. Ver hr. Riego");
+
+  lcd.setCursor(0, 1);
+  lcd.print("2. Mod hr. Riego");
+
+  switch (indexSub) {
+    case '1':
+      lcd.clear();      // limpia pantalla
+
+      lcd.setCursor(0, 0);
+      lcd.print("Hora: ");
+      lcd.print(alarma[0]);
+
+      lcd.setCursor(0, 1);
+      lcd.print("Minutos: ");
+      lcd.print(alarma[1]);
+      break;
+    case '2':
+      lcd.clear();      // limpia pantalla
+      lcd.setCursor(0, 0);
+      lcd.print("Hora: ");
+
+      lcd.setCursor(0, 1);
+      lcd.print("Minutos: ");
+
+      modificarHora = true;
+      modificarAlarma = true;
+      break;
+    case 'A':
+    case 'B':
+    case 'D':
+      index = indexSub;
+      indexSub = '0';
+      break;
+    case '*':
+      index = 'A';
+      indexSub = '0';
+      break;
+  }
+}
+void menuD() {
+  lcd.clear();      // limpia pantalla
+
+  lcd.setCursor(0, 0);
+  lcd.print("1. humedad Riego");
+
+  lcd.setCursor(0, 1);
+  lcd.print("2. Mod h. Riego");
+
+  switch (indexSub) {
+    case '1':
+      lcd.clear();      // limpia pantalla
+
+      lcd.setCursor(0, 0);
+      lcd.print("Str Humedad: ");
+      lcd.print(humedadTierra[0]);
+
+      lcd.setCursor(0, 1);
+      lcd.print("End Humedad: ");
+      lcd.print(humedadTierra[1]);
+      break;
+    case '2':
+      lcd.clear();      // limpia pantalla
+      lcd.setCursor(0, 0);
+      lcd.print("Str Humedad: ");
+
+      lcd.setCursor(0, 1);
+      lcd.print("End Humedad: ");
+
+      modificarStartHumedad = true;
+      modificarHumedad = true;
+      break;
+    case 'A':
+    case 'B':
+    case 'C':
+      index = indexSub;
+      indexSub = '0';
+      break;
+    case '*':
+      index = 'A';
+      indexSub = '0';
+      break;
+  }
 }
